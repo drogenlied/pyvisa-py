@@ -67,7 +67,12 @@ class GPIBSession(Session):
     def after_parsing(self):
         minor = self.parsed.board
         pad = self.parsed.primary_address
-        self.handle = gpib.dev(int(minor), int(pad))
+        sad = self.parsed.secondary_address
+        if sad == constants.VI_NO_SEC_ADDR:
+            self.handle = gpib.dev(int(minor), int(pad))
+        else:
+            # Natinal Instruments has secondary addresses starting at 0, not at 0x60.
+            self.handle = gpib.dev(int(minor), int(pad), int(sad) + 0x60)
         self.interface = Gpib(self.handle)
         # force timeout setting to interface
         self.set_attribute(constants.VI_ATTR_TMO_VALUE, attributes.AttributesByID[constants.VI_ATTR_TMO_VALUE].default)
@@ -77,7 +82,7 @@ class GPIBSession(Session):
             # 0x3 is the hexadecimal reference to the IbaTMO (timeout) configuration
             # option in linux-gpib.
             gpib_timeout = self.interface.ask(3)
-            if gpib_timeout and gpib_timeout < len(TIMETABLE): 
+            if gpib_timeout and gpib_timeout < len(TIMETABLE):
                 self.timeout = TIMETABLE[gpib_timeout]
             else:
                 # value is 0 or out of range -> infinite
